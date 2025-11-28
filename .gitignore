@@ -1,0 +1,105 @@
+# ==========================
+# Flutter & Dart
+# ==========================
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+.melos_tool/
+
+# Optional analyzer configuration
+analysis_options.yaml
+
+# ==========================
+# IDE / Editors
+# ==========================
+.idea/
+*.iml
+.vscode/
+.atom/
+.history/
+.svn/
+
+# ==========================
+# macOS
+# ==========================
+.DS_Store
+macos/Flutter/ephemeral/
+macos/build/
+*.xcworkspace
+*.xcodeproj/
+*.xcuserstate
+*.xcscheme
+*.xcsettings
+*.lock
+DerivedData/
+
+# ==========================
+# Android
+# ==========================
+android/.gradle/
+android/app/build/
+android/build/
+*.jks
+*.keystore
+local.properties
+.gradle/
+captures/
+
+# ==========================
+# iOS
+# ==========================
+ios/Flutter/Flutter.framework
+ios/Flutter/App.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/Flutter.podspec
+ios/.symlinks
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+ios/.flutter-plugins
+ios/.flutter-plugins-dependencies
+
+# ==========================
+# Windows / Linux / Web
+# ==========================
+windows/Flutter/ephemeral/
+windows/build/
+linux/Flutter/ephemeral/
+linux/build/
+build/web/
+
+# ==========================
+# Logs / Misc
+# ==========================
+*.log
+*.tmp
+*.swp
+*.pyc
+*.class
+*.lock
+*.map.json
+*.symbols
+
+# ==========================
+# Environment / Secrets
+# ==========================
+.env
+.env.*
+*.key
+*.pem
+
+# ==========================
+# Flutter Launcher Icons
+# (para que no subas los generados)
+# ==========================
+android/app/src/main/res/mipmap-*
+ios/Runner/Assets.xcassets/AppIcon.appiconset/*
+
+# ==========================
+# Pub Lock File
+# ==========================
+pubspec.lock
