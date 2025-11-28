@@ -1,12 +1,3 @@
-Aquí tienes el **README.md actualizado**, con las nuevas secciones solicitadas:
-
-* Explicación clara de que **el proxy solo funciona para apps y sistemas que respetan la configuración de proxy HTTP/HTTPS del cliente**.
-* Guía de **configuración de proxy** para: Android, Windows, macOS, Linux y iOS.
-
-Todo está redactado de forma profesional, clara y técnica.
-
----
-
 # 📡 ProxyApp – Proof of Concept (PoC)
 
 ProxyApp es una aplicación móvil desarrollada como **prueba de concepto (PoC)**, cuyo objetivo fue validar si un **dispositivo móvil con datos móviles** puede actuar como **servidor proxy** para otros dispositivos conectados por Wi-Fi local —especialmente en escenarios donde esos otros dispositivos no poseen conexión a Internet.
