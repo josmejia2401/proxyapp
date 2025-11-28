@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:proxyapp/features/proxy/controllers/cache_service.dart';
 import 'package:proxyapp/features/proxy/controllers/system_stats_service.dart';
 import 'client_tracker.dart';
 import 'proxy_server.dart';
+import 'package:proxyapp/features/proxy/background/proxy_task_handler.dart';
 
 class ProxyNotifier extends ChangeNotifier {
   final ClientTracker tracker;
@@ -15,7 +18,8 @@ class ProxyNotifier extends ChangeNotifier {
   bool _isRunning = false;
   int _port = 8080;
   final List<String> _logs = [];
-  final StreamController<List<String>> _logStream = StreamController<List<String>>.broadcast();
+  final StreamController<List<String>> _logStream =
+      StreamController<List<String>>.broadcast();
   String? _errorMessage;
   Set<String> _blocked = {};
   final CacheService cache = CacheService.instance;
@@ -52,7 +56,6 @@ class ProxyNotifier extends ChangeNotifier {
     notifyListeners();
     await cache.writeList("blocked_ips", blocked.toList());
     addLog("✔️ Dispositivo desbloqueado $ip");
-
   }
 
   void setError(String? msg) {
@@ -91,11 +94,15 @@ class ProxyNotifier extends ChangeNotifier {
 
   void onServerStarted() {
     _isRunning = true;
+    if (Platform.isAndroid) {
+      startBackgroundProxy();
+    }
     notifyListeners();
   }
 
   void onServerStopped() {
     _isRunning = false;
+    FlutterForegroundTask.stopService();
     notifyListeners();
   }
 
@@ -146,4 +153,45 @@ class ProxyNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> startBackgroundProxy() async {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'proxy_service',
+        channelName: 'Proxy en segundo plano',
+        channelDescription: 'Mantiene el servidor proxy activo',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+        showWhen: true,
+        enableVibration: false,
+        playSound: false,
+        onlyAlertOnce: true,
+        visibility: NotificationVisibility.VISIBILITY_PUBLIC,
+      ),
+
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
+      ),
+
+      foregroundTaskOptions: ForegroundTaskOptions(
+        autoRunOnBoot: true,
+        allowWakeLock: true,
+        allowWifiLock: true,
+        autoRunOnMyPackageReplaced: true,
+        eventAction: ForegroundTaskEventAction.repeat(5000),
+      ),
+    );
+
+    // Iniciar el servicio foreground
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'Proxy Activo',
+      notificationText: 'El servidor sigue ejecutándose en segundo plano',
+      callback: startCallback,
+    );
+  }
+
+  @pragma('vm:entry-point')
+  void startCallback() {
+    FlutterForegroundTask.setTaskHandler(ProxyTaskHandler());
+  }
 }
