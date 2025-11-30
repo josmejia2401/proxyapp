@@ -1,5 +1,3 @@
----
-
 # 📡 ProxyApp – Proof of Concept (PoC)
 
 ProxyApp es una aplicación móvil desarrollada como **prueba de concepto (PoC)**, cuyo objetivo fue validar si un **smartphone con datos móviles** puede actuar como **servidor proxy** para otros dispositivos conectados a su red Wi-Fi local, incluso cuando esos otros dispositivos **no poseen Internet** o tienen restricciones de hotspot.
