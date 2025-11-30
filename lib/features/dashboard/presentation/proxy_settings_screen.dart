@@ -59,24 +59,6 @@ class ProxySettingsScreen extends StatelessWidget {
 
           _editableCard(
             context,
-            icon: Icons.battery_saver,
-            label: "Ejecutar en segundo plano",
-            subtitle: "Mantener activo incluso al cerrar la app",
-            onTap: () async {
-              await context.read<ProxyNotifier>().startBackgroundProxy();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("El proxy continúa corriendo en segundo plano"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          _editableCard(
-            context,
             icon: Icons.delete_forever,
             label: "Limpiar Caché",
             subtitle: "Eliminar estadísticas y dispositivos",
@@ -96,7 +78,7 @@ class ProxySettingsScreen extends StatelessWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text("¿Limpiar caché?"),
         content: const Text(
           "Esto eliminará:\n\n"
@@ -109,11 +91,11 @@ class ProxySettingsScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text("Cancelar"),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,

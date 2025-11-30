@@ -32,9 +32,6 @@ class DevicesScreen extends StatelessWidget {
     );
   }
 
-  /// ===========================
-  /// EMPTY PLACEHOLDER
-  /// ===========================
   Widget _emptyPlaceholder() {
     return Center(
       child: Padding(
@@ -84,9 +81,9 @@ class DevicesScreen extends StatelessWidget {
         ),
 
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // 🔥 evita overflow
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ICONO DEL DISPOSITIVO
+            // ICONO
             CircleAvatar(
               radius: 30,
               backgroundColor: d.online
@@ -101,7 +98,7 @@ class DevicesScreen extends StatelessWidget {
 
             const SizedBox(width: 16),
 
-            /// INFO DEL DISPOSITIVO (expande)
+            // COLUMNA EXPANDIDA (INFO)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,10 +109,9 @@ class DevicesScreen extends StatelessWidget {
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     d.ip,
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
@@ -129,16 +125,17 @@ class DevicesScreen extends StatelessWidget {
                         fontSize: 12,
                         color: Colors.grey.shade600,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
 
                   const SizedBox(height: 10),
 
-                  /// VELOCIDADES
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
                     children: [
                       _speedBadge(Icons.download, d.speedDown),
-                      const SizedBox(width: 6),
                       _speedBadge(Icons.upload, d.speedUp),
                     ],
                   ),
@@ -168,25 +165,27 @@ class DevicesScreen extends StatelessWidget {
 
             const SizedBox(width: 10),
 
-            /// SWITCH BLOQUEO (arriba y sin overflow)
-            Column(
-              children: [
-                Switch(
-                  value: !d.blocked,
-                  activeColor: Colors.green,
-                  onChanged: (v) {
-                    v ? proxy.unblock(d.ip) : proxy.block(d.ip);
-                  },
-                ),
-                Text(
-                  d.blocked ? "Bloq." : "OK",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: d.blocked ? Colors.red : Colors.green,
+            SizedBox(
+              width: 70,
+              child: Column(
+                children: [
+                  Switch(
+                    value: !d.blocked,
+                    activeColor: Colors.green,
+                    onChanged: (v) {
+                      v ? proxy.unblock(d.ip) : proxy.block(d.ip);
+                    },
                   ),
-                ),
-              ],
+                  Text(
+                    d.blocked ? "Bloq." : "OK",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: d.blocked ? Colors.red : Colors.green,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -194,7 +193,6 @@ class DevicesScreen extends StatelessWidget {
     );
   }
 
-  /// BADGE VELOCIDAD
   Widget _speedBadge(IconData icon, double bytesPerSec) {
     final kb = (bytesPerSec / 1024).toStringAsFixed(1);
 

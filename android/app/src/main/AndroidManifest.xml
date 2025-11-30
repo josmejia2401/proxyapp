@@ -6,23 +6,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
     <uses-permission android:name="android.permission.LOCAL_MAC_ADDRESS"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-
 
     <application
         android:label="proxyapp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-
-        <service
-            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync">
-        </service>
 
         <activity
             android:name=".MainActivity"

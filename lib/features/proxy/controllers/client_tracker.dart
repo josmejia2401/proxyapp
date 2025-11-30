@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:proxyapp/features/proxy/controllers/cache_service.dart';
-
 import '../domain/device_info.dart';
 
 class ClientTracker {
@@ -9,18 +8,31 @@ class ClientTracker {
 
   /// Stream para emitir cambios en tiempo real a la UI.
   final StreamController<List<DeviceInfo>> _stream =
-  StreamController<List<DeviceInfo>>.broadcast();
+      StreamController<List<DeviceInfo>>.broadcast();
 
   Stream<List<DeviceInfo>> get stream => _stream.stream;
 
   Timer? _speedTimer;
 
+  /// Tiempo máximo para considerar un dispositivo "online"
+  /// desde su última actividad.
+  final Duration onlineTimeout = const Duration(seconds: 20);
+
   ClientTracker() {
-    // Actualización de velocidades cada 1 segundo
+    // Actualización de velocidades + estado online cada 1 segundo
     _speedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final now = DateTime.now();
+
       for (final device in devices.values) {
         device.updateSpeed(); // recalcula Kbps basados en ventana de 1s
+
+        final last = device.lastActivity ?? device.lastConnection;
+
+        if (last != null && now.difference(last) > onlineTimeout) {
+          device.online = false;
+        }
       }
+
       _push();
     });
   }
@@ -32,55 +44,49 @@ class ClientTracker {
     }
   }
 
-  // ==============================================
-  // 🔵 Registrar conexión
-  // ==============================================
+  void _markActivity(DeviceInfo d) {
+    d.lastActivity = DateTime.now();
+    d.online = true;
+  }
+
   void registerConnection(
-      String ip, {
-        String? macAddress,
-        String? deviceName,
-        int? port,
-      }) {
+    String ip, {
+    String? macAddress,
+    String? deviceName,
+    int? port,
+  }) {
     devices.putIfAbsent(ip, () => DeviceInfo(ip));
 
     final d = devices[ip]!;
 
-    d.online = true;
     d.lastConnection = DateTime.now();
     d.macAddress = macAddress ?? d.macAddress;
     d.deviceName = deviceName ?? d.deviceName;
     d.remotePort = port ?? d.remotePort;
 
+    _markActivity(d);
     _push();
+    saveStats(); // persistimos
   }
 
-  // ==============================================
-  // 🔴 Registrar desconexión
-  // ==============================================
   void registerDisconnect(String ip) {
     final d = devices[ip];
     if (d == null) return;
 
-    d.online = false;
     d.lastDisconnect = DateTime.now();
 
     _push();
+    saveStats();
   }
 
-  // ==============================================
-  // 📝 Actualizar metadata del cliente
-  // ==============================================
-  void updateClientMeta(
-      String ip, {
-        String? userAgent,
-        String? firstLine,
-      }) {
+  void updateClientMeta(String ip, {String? userAgent, String? firstLine}) {
     final d = devices[ip];
     if (d == null) return;
 
     if (userAgent != null) d.userAgent = userAgent;
     if (firstLine != null) d.lastRequest = firstLine;
 
+    _markActivity(d);
     _push();
   }
 
@@ -89,40 +95,30 @@ class ClientTracker {
     if (d == null) return;
 
     d.lastDomain = host;
+    _markActivity(d);
     _push();
   }
 
-  // ==============================================
-  // 📥 Registrar bytes descargados
-  // ==============================================
   void addDownload(String ip, int bytes) {
     final d = devices[ip];
     if (d == null) return;
 
     d.consumeDownload(bytes);
+    _markActivity(d);
     _push();
   }
 
-  // ==============================================
-  // 📤 Registrar bytes subidos
-  // ==============================================
   void addUpload(String ip, int bytes) {
     final d = devices[ip];
     if (d == null) return;
 
     d.consumeUpload(bytes);
+    _markActivity(d);
     _push();
   }
 
-  // ==============================================
-  // 📄 Lista inmutable para la UI
-  // ==============================================
-  List<DeviceInfo> get devicesList =>
-      devices.values.toList(growable: false);
+  List<DeviceInfo> get devicesList => devices.values.toList(growable: false);
 
-  // ==============================================
-  // 🧹 Liberar recursos
-  // ==============================================
   void dispose() {
     _speedTimer?.cancel();
     _stream.close();
@@ -139,11 +135,15 @@ class ClientTracker {
   }
 
   Future<void> loadStats() async {
-    final raw = CacheService.instance.readJson("devices_stats");
+    final raw = await CacheService.instance.readJson(
+      "devices_stats",
+    ); // OJO: await
     if (raw == null) return;
 
     raw.forEach((ip, dJson) {
       devices[ip] = DeviceInfo.fromJson(Map<String, dynamic>.from(dJson));
     });
+
+    _push();
   }
 }

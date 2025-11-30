@@ -16,7 +16,6 @@ void main() async {
   final tracker = ClientTracker();
   final system = SystemStatsService();
   final proxyNotifier = ProxyNotifier(tracker, system);
-  proxyNotifier.loadBlocked();
 
   runApp(
     MultiProvider(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:proxyapp/features/proxy/controllers/system_stats_service.dart';
+import 'package:proxyapp/features/proxy/dns/dns_resolver.dart';
 
 import 'client_tracker.dart';
 import 'proxy_notifier.dart';
@@ -10,7 +11,6 @@ class ProxyServer {
   ServerSocket? _server;
   final ClientTracker tracker;
   final ProxyNotifier notifier;
-
 
   ProxyServer(this.tracker, this.notifier);
 
@@ -178,7 +178,9 @@ class ProxyServer {
 
       notifier.addLog("🔐 CONNECT hacia $host:$port");
 
-      final remote = await Socket.connect(host, port);
+      final ipToConnect = await DnsResolver.instance.resolve(host);
+
+      final remote = await Socket.connect(ipToConnect, port);
       outRemoteSocket(remote);
 
       notifier.addLog("🔗 Túnel establecido con $host:$port");
@@ -244,6 +246,9 @@ class ProxyServer {
 
       notifier.addLog("🌍 Enviando petición real a ${uri.host}");
 
+      final resolvedIp = await DnsResolver.instance.resolve(uri.host);
+      notifier.addLog("DNS → ${uri.host} = $resolvedIp");
+
       final req = await httpClient.openUrl(method, uri);
 
       final res = await req.close();
@@ -283,12 +288,11 @@ class ProxyServer {
   }
 
   Future<String?> _resolveMac(String ip) async {
-    notifier.addLog("🔍 Resolviendo MAC para $ip...");
+    notifier.addLog("Resolviendo MAC para $ip...");
     return null;
   }
 
   Future<String?> _resolveDeviceName(String ip) async {
-    // Android no soporta nslookup, devolvemos null
     notifier.addLog(
       "ℹ Saltando resolución de nombre para $ip (no soportado en Android)",
     );

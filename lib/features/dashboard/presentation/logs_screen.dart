@@ -92,16 +92,18 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   void _scrollToEnd() {
-    if (!scrollController.hasClients) return;
-
-    Future.delayed(const Duration(milliseconds: 60), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) return;
 
-      scrollController.animateTo(
-        scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
+      Future.delayed(const Duration(milliseconds: 60), () {
+        if (!scrollController.hasClients) return;
+
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      });
     });
   }
 
@@ -159,13 +161,28 @@ class _LogsScreenState extends State<LogsScreen> {
             itemBuilder: (_) => [
               const PopupMenuItem(value: null, child: Text("Todos")),
               const PopupMenuItem(value: LogType.error, child: Text("Errores")),
-              const PopupMenuItem(value: LogType.connect, child: Text("CONNECT")),
-              const PopupMenuItem(value: LogType.request, child: Text("Requests")),
-              const PopupMenuItem(value: LogType.response, child: Text("Responses")),
-              const PopupMenuItem(value: LogType.client, child: Text("Cliente")),
-              const PopupMenuItem(value: LogType.server, child: Text("Proxy/Server")),
+              const PopupMenuItem(
+                value: LogType.connect,
+                child: Text("CONNECT"),
+              ),
+              const PopupMenuItem(
+                value: LogType.request,
+                child: Text("Requests"),
+              ),
+              const PopupMenuItem(
+                value: LogType.response,
+                child: Text("Responses"),
+              ),
+              const PopupMenuItem(
+                value: LogType.client,
+                child: Text("Cliente"),
+              ),
+              const PopupMenuItem(
+                value: LogType.server,
+                child: Text("Proxy/Server"),
+              ),
             ],
-          )
+          ),
         ],
       ),
 
@@ -198,59 +215,59 @@ class _LogsScreenState extends State<LogsScreen> {
               color: AppColors.surfaceVariant,
               child: filteredLogs.isEmpty
                   ? Center(
-                child: Text(
-                  "No hay logs para mostrar",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: AppColors.textSecondary.withOpacity(0.5),
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                controller: scrollController,
-                padding: const EdgeInsets.all(14),
-                itemCount: filteredLogs.length,
-                itemBuilder: (_, index) {
-                  final log = filteredLogs[index];
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.border.withOpacity(0.5),
+                      child: Text(
+                        "No hay logs para mostrar",
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                        ),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          offset: const Offset(0, 1),
-                          blurRadius: 4,
-                          color: Colors.black.withOpacity(0.05),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(log.icon, color: log.color, size: 22),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SelectableText(
-                            log,
-                            style: TextStyle(
-                              color: log.color,
-                              fontSize: 13,
-                              fontFamily: "monospace",
-                              height: 1.35,
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(14),
+                      itemCount: filteredLogs.length,
+                      itemBuilder: (_, index) {
+                        final log = filteredLogs[index];
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.border.withOpacity(0.5),
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                offset: const Offset(0, 1),
+                                blurRadius: 4,
+                                color: Colors.black.withOpacity(0.05),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(log.icon, color: log.color, size: 22),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: SelectableText(
+                                  log,
+                                  style: TextStyle(
+                                    color: log.color,
+                                    fontSize: 13,
+                                    fontFamily: "monospace",
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ),
         ],

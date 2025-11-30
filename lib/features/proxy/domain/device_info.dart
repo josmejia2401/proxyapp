@@ -25,6 +25,8 @@ class DeviceInfo {
 
   bool blocked = false;
 
+  DateTime? lastActivity;
+
   DeviceInfo(this.ip);
 
   /// 🔹 Llamado por ClientTracker.addDownload

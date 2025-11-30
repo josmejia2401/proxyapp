@@ -108,8 +108,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Expanded(
                     child: _metricCard(
-                      icon: Icons.data_usage,
-                      label: "Descargado",
+                      icon: Icons.cloud_download,
+                      label: "Descarga",
                       value: "${(totalDown / 1e6).toStringAsFixed(2)} MB",
                       color: Colors.blueAccent,
                     ),
@@ -175,6 +175,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         label: "RAM usada",
                         value: "${s.ram.toStringAsFixed(1)} MB",
                         color: Colors.indigo,
+                      ),
+                      SizedBox(height: 12),
+                      _metricCard(
+                        icon: Icons.phone_android,
+                        label: "Memoria App",
+                        value: "${s.appMemory.toStringAsFixed(1)} MB",
+                        color: Colors.deepOrange,
                       ),
                     ],
                   );
