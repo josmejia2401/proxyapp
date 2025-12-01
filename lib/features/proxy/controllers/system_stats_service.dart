@@ -4,9 +4,6 @@ import 'package:proxyapp/features/proxy/domain/client_tracker.dart';
 class SystemStatsService {
   SystemStatsService();
 
-  /// -----------------------------
-  /// RAM total usada del sistema
-  /// -----------------------------
   Future<double> getSystemRamUsedMb() async {
     try {
       final meminfo = await File('/proc/meminfo').readAsLines();
@@ -31,10 +28,6 @@ class SystemStatsService {
     }
   }
 
-  /// -----------------------------
-  /// RAM usada por la app (Proceso)
-  /// VmRSS = Resident Set Size
-  /// -----------------------------
   Future<double> getAppMemoryMb() async {
     try {
       final lines = await File('/proc/self/status').readAsLines();
@@ -50,17 +43,39 @@ class SystemStatsService {
     return 0;
   }
 
-  /// -----------------------------
-  /// Retornar stats combinados
-  /// -----------------------------
+  int openSockets() {
+    try {
+      final dir = Directory("/proc/self/fd");
+
+      return dir.listSync().where((entity) {
+        try {
+          if (FileSystemEntity.typeSync(entity.path) !=
+              FileSystemEntityType.link) {
+            return false;
+          }
+
+          final target = File(entity.path).resolveSymbolicLinksSync();
+
+          return target.startsWith('socket:[');
+        } catch (_) {
+          return false;
+        }
+      }).length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   Future<SystemStats> readStats() async {
     final ramSystem = await getSystemRamUsedMb();
     final ramApp = await getAppMemoryMb();
+    final countTask = openSockets();
 
     return SystemStats(
-      cpu: 0,          // CPU NO DISPONIBLE → SIEMPRE 0
-      ram: ramSystem, // RAM del sistema
-      appMemory: ramApp, // RAM usada por tu app
+      cpu: 0,
+      ram: ramSystem,
+      appMemory: ramApp,
+      countTask: countTask,
     );
   }
 }

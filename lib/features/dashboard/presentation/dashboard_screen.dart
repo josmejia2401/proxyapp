@@ -16,12 +16,32 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _localIp = "0.0.0.0";
   String _appVersion = "—";
+  Timer? uptimeTimer;
+  Duration _uptime = Duration.zero;
 
   @override
   void initState() {
     super.initState();
     _loadIp();
     _loadVersion();
+
+    uptimeTimer = Timer.periodic(Duration(seconds: 1), (_) {
+      final proxy = context.read<ProxyNotifier>();
+
+      if (proxy.isRunning) {
+        setState(() {
+          _uptime = proxy.uptime;
+        });
+      } else {
+        setState(() => _uptime = Duration.zero);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    uptimeTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadIp() async {
@@ -34,10 +54,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _appVersion = "${info.version}+${info.buildNumber}");
   }
 
+  String formatBytes(int bytes) {
+    const kb = 1024;
+    const mb = kb * 1024;
+    const gb = mb * 1024;
+
+    if (bytes >= gb) {
+      final v = bytes / gb;
+      return "${v.toStringAsFixed(2)} GB";
+    } else {
+      final v = bytes / mb;
+      return "${v.toStringAsFixed(2)} MB";
+    }
+  }
+
+  String formatSpeed(double bytesPerSecond) {
+    const kb = 1024;
+    const mb = kb * 1024;
+    const gb = mb * 1024;
+
+    if (bytesPerSecond >= gb) {
+      final v = bytesPerSecond / gb;
+      return "${v.toStringAsFixed(2)} GB/s";
+    } else if (bytesPerSecond >= mb) {
+      final v = bytesPerSecond / mb;
+      return "${v.toStringAsFixed(2)} MB/s";
+    } else {
+      final v = bytesPerSecond / kb;
+      return "${v.toStringAsFixed(2)} KB/s";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final proxy = context.watch<ProxyNotifier>();
     final devices = proxy.tracker.devicesList;
+    final activeRequests = proxy.tracker.activeRequests;
 
     final double down = devices.fold(0.0, (a, b) => a + b.speedDown);
     final double up = devices.fold(0.0, (a, b) => a + b.speedUp);
@@ -62,9 +114,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// ===========================
-              /// ESTADO DEL PROXY
-              /// ===========================
               _sectionTitle("Estado del Proxy"),
 
               _proxyStatusCard(
@@ -72,6 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ip: _localIp,
                 port: proxy.port,
                 version: _appVersion,
+                uptime: _uptime,
               ),
 
               const SizedBox(height: 22),
@@ -84,7 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _metricCard(
                       icon: Icons.download,
                       label: "Descarga",
-                      value: "${(down / 1024).toStringAsFixed(2)} KB/s",
+                      value: formatSpeed(down),
                       color: Colors.blue,
                     ),
                   ),
@@ -93,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _metricCard(
                       icon: Icons.upload,
                       label: "Subida",
-                      value: "${(up / 1024).toStringAsFixed(2)} KB/s",
+                      value: formatSpeed(up),
                       color: Colors.green,
                     ),
                   ),
@@ -110,7 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _metricCard(
                       icon: Icons.cloud_download,
                       label: "Descarga",
-                      value: "${(totalDown / 1e6).toStringAsFixed(2)} MB",
+                      value: formatBytes(totalDown),
                       color: Colors.blueAccent,
                     ),
                   ),
@@ -119,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _metricCard(
                       icon: Icons.cloud_upload,
                       label: "Subido",
-                      value: "${(totalUp / 1e6).toStringAsFixed(2)} MB",
+                      value: formatBytes(totalUp),
                       color: Colors.teal,
                     ),
                   ),
@@ -183,6 +233,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         value: "${s.appMemory.toStringAsFixed(1)} MB",
                         color: Colors.deepOrange,
                       ),
+                      SizedBox(height: 12),
+                      _metricCard(
+                        icon: Icons.task_alt,
+                        label: "Tareas",
+                        value: "${s.countTask}",
+                        color: Colors.deepOrange,
+                      ),
+                      SizedBox(height: 12),
+                      _metricCard(
+                        icon: Icons.sync,
+                        label: "Solicitudes actuales",
+                        value: "${activeRequests}",
+                        color: Colors.deepOrange,
+                      ),
                     ],
                   );
                 },
@@ -210,6 +274,7 @@ Widget _proxyStatusCard({
   required String ip,
   required int port,
   required String version,
+  required Duration uptime,
 }) {
   return Container(
     padding: const EdgeInsets.all(16),
@@ -253,6 +318,17 @@ Widget _proxyStatusCard({
                   fontWeight: FontWeight.w600,
                 ),
               ),
+
+              const SizedBox(height: 6),
+
+              if (isRunning)
+                Text(
+                  "Activo: ${formatDuration(uptime)}",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
             ],
           ),
         ),
@@ -325,4 +401,14 @@ Future<String> getLocalIp() async {
     }
   } catch (_) {}
   return "0.0.0.0";
+}
+
+String formatDuration(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  final s = d.inSeconds.remainder(60);
+
+  if (h > 0) return "${h}h ${m}m ${s}s";
+  if (m > 0) return "${m}m ${s}s";
+  return "${s}s";
 }

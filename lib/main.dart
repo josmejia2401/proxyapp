@@ -4,6 +4,7 @@ import 'package:proxyapp/features/proxy/controllers/cache_service.dart';
 import 'package:proxyapp/features/proxy/controllers/client_tracker.dart';
 import 'package:proxyapp/features/proxy/controllers/proxy_notifier.dart';
 import 'package:proxyapp/features/proxy/controllers/system_stats_service.dart';
+import 'package:proxyapp/features/proxy/firewall/firewall_service.dart';
 import 'package:proxyapp/routes.dart';
 import 'package:proxyapp/theme/app_theme.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -15,7 +16,8 @@ void main() async {
 
   final tracker = ClientTracker();
   final system = SystemStatsService();
-  final proxyNotifier = ProxyNotifier(tracker, system);
+  final firewall = FirewallService();
+  final proxyNotifier = ProxyNotifier(tracker, system, firewall);
 
   runApp(
     MultiProvider(

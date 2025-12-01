@@ -1,46 +1,51 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:proxyapp/features/proxy/controllers/cache_service.dart';
 import 'package:proxyapp/features/proxy/controllers/system_stats_service.dart';
+import 'package:proxyapp/features/proxy/firewall/firewall_service.dart';
 import 'client_tracker.dart';
 import 'proxy_server.dart';
 
 class ProxyNotifier extends ChangeNotifier {
   final ClientTracker tracker;
   final SystemStatsService statsService;
-
+  final FirewallService firewall;
   ProxyServer? _server;
+  DateTime? _startTime;
+  Timer? _uptimeTimer;
 
   bool _isRunning = false;
   int _port = 8080;
-  final List<String> _logs = [];
-  final StreamController<List<String>> _logStream =
-      StreamController<List<String>>.broadcast();
-  String? _errorMessage;
+
   Set<String> _blocked = {};
+  final List<String> _logs = [];
   final CacheService cache = CacheService.instance;
 
-  ProxyNotifier(this.tracker, this.statsService) {
+  ProxyNotifier(this.tracker, this.statsService, this.firewall) {
     _loadState();
   }
 
+  final StreamController<String> _logStream =
+      StreamController<String>.broadcast();
+
   bool get isRunning => _isRunning;
   int get port => _port;
-  String? get errorMessage => _errorMessage;
   Set<String> get blocked => _blocked;
-
   bool isBlocked(String ip) => _blocked.contains(ip);
-
   List<String> get logs => _logs;
-  Stream<List<String>> get logsStream => _logStream.stream;
+  Stream<String> get logsStream => _logStream.stream;
+  DateTime? get startTime => _startTime;
+
+  Duration get uptime {
+    if (_startTime == null) return Duration.zero;
+    return DateTime.now().difference(_startTime!);
+  }
 
   void block(String ip) async {
     _blocked.add(ip);
     tracker.devices[ip]?.blocked = true;
     notifyListeners();
     await cache.writeList("blocked_ips", blocked.toList());
-    addLog("⛔ Dispositivo bloqueado $ip");
   }
 
   void unblock(String ip) async {
@@ -48,12 +53,6 @@ class ProxyNotifier extends ChangeNotifier {
     tracker.devices[ip]?.blocked = false;
     notifyListeners();
     await cache.writeList("blocked_ips", blocked.toList());
-    addLog("✔️ Dispositivo desbloqueado $ip");
-  }
-
-  void setError(String? msg) {
-    _errorMessage = msg;
-    notifyListeners();
   }
 
   Future<void> startServer() async {
@@ -63,12 +62,12 @@ class ProxyNotifier extends ChangeNotifier {
       _server = ProxyServer(tracker, this);
       await _server!.start(port: _port);
 
+      _startTime = DateTime.now();
       _isRunning = true;
-      _errorMessage = null;
 
       notifyListeners();
     } catch (e) {
-      setError("Error al iniciar server: $e");
+      debugPrint("Error al iniciar server: $e");
     }
   }
 
@@ -78,27 +77,33 @@ class ProxyNotifier extends ChangeNotifier {
     try {
       await _server?.stop();
       _isRunning = false;
-
+      _startTime = null;
       notifyListeners();
     } catch (e) {
-      setError("Error al detener server: $e");
+      debugPrint("Error al detener server: $e");
     }
   }
 
   void onServerStarted() {
     _isRunning = true;
+    _startTime = DateTime.now();
+    _uptimeTimer?.cancel();
+    _uptimeTimer = Timer.periodic(Duration(seconds: 1), (_) {
+      notifyListeners();
+    });
     notifyListeners();
   }
 
   void onServerStopped() {
     _isRunning = false;
-    FlutterForegroundTask.stopService();
+    _startTime = null;
+    _uptimeTimer?.cancel();
     notifyListeners();
   }
 
   Future<void> setPort(int newPort) async {
     if (newPort <= 0 || newPort > 65535) {
-      setError("Puerto inválido");
+      debugPrint("Puerto inválido");
       return;
     }
 
@@ -113,7 +118,6 @@ class ProxyNotifier extends ChangeNotifier {
 
   void clearLogs() {
     _logs.clear();
-    _logStream.add(_logs);
     notifyListeners();
   }
 
@@ -132,7 +136,7 @@ class ProxyNotifier extends ChangeNotifier {
       _logs.removeAt(0);
     }
 
-    _logStream.add(_logs);
+    _logStream.add(log);
     notifyListeners();
   }
 
@@ -154,6 +158,26 @@ class ProxyNotifier extends ChangeNotifier {
     await tracker.loadStats();
     final saved = cache.readList("blocked_ips");
     _blocked = saved.toSet();
+    notifyListeners();
+  }
+
+  void addBlockedDomain(String domain) {
+    firewall.addDomain(domain);
+    notifyListeners();
+  }
+
+  void removeBlockedDomain(String domain) {
+    firewall.removeDomain(domain);
+    notifyListeners();
+  }
+
+  void addKeyword(String keyword) {
+    firewall.addKeyword(keyword);
+    notifyListeners();
+  }
+
+  void removeKeyword(String keyword) {
+    firewall.removeKeyword(keyword);
     notifyListeners();
   }
 }

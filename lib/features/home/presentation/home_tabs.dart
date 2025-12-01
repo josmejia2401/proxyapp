@@ -4,6 +4,7 @@ import 'package:proxyapp/features/home/presentation/tabs/config_tab.dart';
 import 'package:proxyapp/features/home/presentation/tabs/dashboard_tab.dart';
 import 'package:proxyapp/features/home/presentation/tabs/device_tab.dart';
 import 'package:proxyapp/core/constants/app_colors.dart';
+import 'package:proxyapp/features/home/presentation/tabs/firewall_tab.dart';
 import 'package:proxyapp/features/home/presentation/tabs/logs_tab.dart';
 
 class HomeTabs extends StatefulWidget {
@@ -27,6 +28,7 @@ class _HomeTabsState extends State<HomeTabs> {
     GlobalKey<NavigatorState>(), // Dispositivos
     GlobalKey<NavigatorState>(), // Config
     GlobalKey<NavigatorState>(), // Logs
+    GlobalKey<NavigatorState>(), // Firewall
   ];
 
   void _selectTab(int index) {
@@ -45,7 +47,8 @@ class _HomeTabsState extends State<HomeTabs> {
     DashboardTab(),
     DeviceTab(),
     ConfigTab(),
-    LogsTab()
+    LogsTab(),
+    FirewallTab()
   ];
 
   @override
@@ -88,6 +91,11 @@ class _HomeTabsState extends State<HomeTabs> {
           BottomNavigationBarItem(
             icon: Icon(Icons.article),
             label: 'Logs',
+            backgroundColor: AppColors.primary,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.security),
+            label: 'Firewall',
             backgroundColor: AppColors.primary,
           ),
         ],

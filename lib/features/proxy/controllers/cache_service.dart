@@ -13,10 +13,6 @@ class CacheService {
     _prefs ??= await SharedPreferences.getInstance();
   }
 
-  // ───────────────────────────────
-  // GENERAL STORAGE HELPERS
-  // ───────────────────────────────
-
   Future<void> writeString(String key, String value) async {
     await _prefs?.setString(key, value);
   }
@@ -50,5 +46,4 @@ class CacheService {
   Future<void> clearAll() async {
     await _prefs?.clear();
   }
-
 }

@@ -3,28 +3,22 @@ import 'package:proxyapp/features/proxy/controllers/cache_service.dart';
 import '../domain/device_info.dart';
 
 class ClientTracker {
-  /// Mapa de dispositivos conectados, indexado por IP.
   final Map<String, DeviceInfo> devices = {};
-
-  /// Stream para emitir cambios en tiempo real a la UI.
-  final StreamController<List<DeviceInfo>> _stream =
-      StreamController<List<DeviceInfo>>.broadcast();
-
-  Stream<List<DeviceInfo>> get stream => _stream.stream;
+  final StreamController<List<DeviceInfo>> _stream = StreamController<List<DeviceInfo>>.broadcast();
 
   Timer? _speedTimer;
+  int _activeRequests = 0;
 
-  /// Tiempo máximo para considerar un dispositivo "online"
-  /// desde su última actividad.
+
   final Duration onlineTimeout = const Duration(seconds: 20);
 
   ClientTracker() {
-    // Actualización de velocidades + estado online cada 1 segundo
+
     _speedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final now = DateTime.now();
 
       for (final device in devices.values) {
-        device.updateSpeed(); // recalcula Kbps basados en ventana de 1s
+        device.updateSpeed();
 
         final last = device.lastActivity ?? device.lastConnection;
 
@@ -37,7 +31,18 @@ class ClientTracker {
     });
   }
 
-  /// Notifica a listeners que hubo cambios en los dispositivos
+
+  int get activeRequests => _activeRequests;
+  Stream<List<DeviceInfo>> get stream => _stream.stream;
+  List<DeviceInfo> get devicesList => devices.values.toList(growable: false);
+
+  void incrementActiveRequests() {
+    _activeRequests++;
+  }
+  void decrementActiveRequests() {
+    if (_activeRequests > 0) _activeRequests--;
+  }
+
   void _push() {
     if (!_stream.isClosed) {
       _stream.add(devices.values.toList(growable: false));
@@ -66,7 +71,7 @@ class ClientTracker {
 
     _markActivity(d);
     _push();
-    saveStats(); // persistimos
+    saveStats();
   }
 
   void registerDisconnect(String ip) {
@@ -117,7 +122,7 @@ class ClientTracker {
     _push();
   }
 
-  List<DeviceInfo> get devicesList => devices.values.toList(growable: false);
+
 
   void dispose() {
     _speedTimer?.cancel();
@@ -135,9 +140,9 @@ class ClientTracker {
   }
 
   Future<void> loadStats() async {
-    final raw = await CacheService.instance.readJson(
+    final raw = CacheService.instance.readJson(
       "devices_stats",
-    ); // OJO: await
+    );
     if (raw == null) return;
 
     raw.forEach((ip, dJson) {

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:proxyapp/features/proxy/controllers/system_stats_service.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:proxyapp/features/proxy/dns/dns_resolver.dart';
 
 import 'client_tracker.dart';
@@ -23,28 +23,25 @@ class ProxyServer {
         InternetAddress.anyIPv4,
         port,
         shared: true,
+        backlog: 1024,  // default era 128
       );
 
-      notifier.addLog("Proxy escuchando en 0.0.0.0:$port");
       notifier.onServerStarted();
 
       _server!.listen(
         _handleClient,
         onError: _onServerError,
         onDone: () {
-          notifier.addLog("Proxy detenido (onDone).");
           notifier.onServerStopped();
         },
       );
     } catch (e) {
-      notifier.setError("Error al iniciar proxy: $e");
+      debugPrint("Error al iniciar proxy: $e");
       notifier.addLog("❌ ERROR al iniciar: $e");
     }
   }
 
   Future<void> stop() async {
-    notifier.addLog("Deteniendo proxy...");
-
     try {
       await _server?.close();
       _server = null;
@@ -52,36 +49,23 @@ class ProxyServer {
 
       notifier.onServerStopped();
     } catch (e) {
-      notifier.setError("Error al detener proxy: $e");
+      debugPrint("Error al detener proxy: $e");
       notifier.addLog("❌ ERROR al detener: $e");
     }
   }
 
   void _onServerError(dynamic error) {
-    notifier.setError("Proxy error: $error");
+    debugPrint("Proxy error: $error");
     notifier.addLog("🔥 ERROR del servidor: $error");
   }
 
-  Future<String> _readHttpHeaders(Socket client) async {
-    final buffer = BytesBuilder();
-    await for (final data in client) {
-      buffer.add(data);
-      final str = utf8.decode(buffer.toBytes(), allowMalformed: true);
-      if (str.contains("\r\n\r\n")) {
-        return str;
-      }
-    }
-    return "";
-  }
-
   Future<void> _handleClient(Socket client) async {
+    client.setOption(SocketOption.tcpNoDelay, true);
+
     final ip = client.remoteAddress.address;
     final port = client.remotePort;
 
-    notifier.addLog("📡 Nueva conexión → $ip:$port");
-
     if (notifier.isBlocked(ip)) {
-      notifier.addLog("⛔ CONEXIÓN BLOQUEADA → $ip");
       client.write("HTTP/1.1 403 Forbidden\r\n\r\n");
       client.close();
       return;
@@ -89,10 +73,6 @@ class ProxyServer {
 
     final mac = await _resolveMac(ip);
     final deviceName = await _resolveDeviceName(ip);
-
-    notifier.addLog(
-      "🔎 Info dispositivo → IP:$ip  MAC:$mac  Nombre:$deviceName",
-    );
 
     tracker.registerConnection(
       ip,
@@ -107,18 +87,19 @@ class ProxyServer {
 
     client.listen(
       (data) async {
+
+
+
         if (firstPacket) {
           firstPacket = false;
+          tracker.incrementActiveRequests();
 
           buffer.addAll(data);
 
           final requestStr = utf8.decode(buffer, allowMalformed: true);
           final firstLine = requestStr.split("\r\n").first;
 
-          notifier.addLog("➡ REQUEST: $firstLine");
-
           final userAgent = _extractHeader(requestStr, "User-Agent");
-          notifier.addLog("📱 User-Agent: $userAgent");
 
           tracker.updateClientMeta(
             ip,
@@ -148,13 +129,14 @@ class ProxyServer {
         }
       },
       onDone: () {
-        notifier.addLog("🔌 Cliente desconectado → $ip");
+        tracker.decrementActiveRequests();
         tracker.registerDisconnect(ip);
         remote?.close();
         client.close();
       },
       onError: (e) {
         notifier.addLog("❌ Error en cliente $ip: $e");
+        tracker.decrementActiveRequests();
         tracker.registerDisconnect(ip);
         remote?.close();
         client.close();
@@ -169,21 +151,21 @@ class ProxyServer {
     String ip, {
     required Function(Socket) outRemoteSocket,
   }) async {
-    notifier.addLog("🔐 HTTPS TÚNEL detectado ($firstLine)");
-
     try {
       final parts = firstLine.split(" ");
       final host = parts[1].split(":")[0];
       final port = int.parse(parts[1].split(":")[1]);
 
-      notifier.addLog("🔐 CONNECT hacia $host:$port");
+      if (notifier.firewall.isBlocked(host: host, url: "$host:$port")) {
+        client.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+        client.close();
+        return;
+      }
 
       final ipToConnect = await DnsResolver.instance.resolve(host);
 
       final remote = await Socket.connect(ipToConnect, port);
       outRemoteSocket(remote);
-
-      notifier.addLog("🔗 Túnel establecido con $host:$port");
 
       client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
 
@@ -197,7 +179,6 @@ class ProxyServer {
           }
         },
         onDone: () {
-          notifier.addLog("🔚 Remoto cerró túnel ($host)");
           client.close();
         },
         onError: (e) {
@@ -228,15 +209,19 @@ class ProxyServer {
       }
       final uri = Uri.tryParse(rawUrl);
 
-      notifier.addLog("🌐 Procesando HTTP → $method $rawUrl");
-
       if (uri == null) {
-        notifier.addLog("⚠ Request inválido desde $ip: $rawUrl");
         client.close();
         return;
       }
 
-      notifier.addLog("➡ Host destino: ${uri.host}");
+      if (notifier.firewall.isBlocked(host: uri.host, url: uri.toString())) {
+        client.write("HTTP/1.1 403 Forbidden\r\n");
+        client.write("Content-Type: text/plain\r\n\r\n");
+        client.write("Access Denied by ProxyApp Firewall\n");
+        client.close();
+        return;
+      }
+
 
       tracker.updateLastDomain(ip, uri.host);
 
@@ -244,35 +229,20 @@ class ProxyServer {
         ..connectionTimeout = Duration(seconds: 6)
         ..userAgent = "ProxyFlutter";
 
-      notifier.addLog("🌍 Enviando petición real a ${uri.host}");
-
-      final resolvedIp = await DnsResolver.instance.resolve(uri.host);
-      notifier.addLog("DNS → ${uri.host} = $resolvedIp");
-
       final req = await httpClient.openUrl(method, uri);
 
       final res = await req.close();
-
-      notifier.addLog(
-        "⬅ Respuesta recibida: ${res.statusCode} ${res.reasonPhrase}",
-      );
 
       client.write("HTTP/1.1 ${res.statusCode} OK\r\n");
       res.headers.forEach((k, v) => client.write("$k: ${v.join(',')}\r\n"));
       client.write("\r\n");
 
-      /*await client.addStream(
-        res.map((d) {
-          tracker.addDownload(ip, d.length);
-          return d;
-        }),
-      );*/
       await for (final chunk in res) {
         tracker.addDownload(ip, chunk.length);
         client.add(chunk);
       }
     } catch (e) {
-      notifier.setError("Error HTTP: $e");
+      debugPrint("Error HTTP: $e");
       notifier.addLog("❌ ERROR HTTP desde $ip → $e");
     }
   }
@@ -288,14 +258,10 @@ class ProxyServer {
   }
 
   Future<String?> _resolveMac(String ip) async {
-    notifier.addLog("Resolviendo MAC para $ip...");
     return null;
   }
 
   Future<String?> _resolveDeviceName(String ip) async {
-    notifier.addLog(
-      "ℹ Saltando resolución de nombre para $ip (no soportado en Android)",
-    );
     return null;
   }
 }
