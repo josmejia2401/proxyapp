@@ -221,6 +221,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       SizedBox(height: 12),
                       _metricCard(
+                        icon: Icons.memory,
+                        label: "CPU App",
+                        value: "${s.appCpu.toStringAsFixed(1)} %",
+                        color: Colors.orange,
+                      ),
+                      SizedBox(height: 12),
+                      _metricCard(
                         icon: Icons.sd_storage,
                         label: "RAM usada",
                         value: "${s.ram.toStringAsFixed(1)} MB",

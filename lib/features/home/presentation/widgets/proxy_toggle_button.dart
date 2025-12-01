@@ -1,9 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:provider/provider.dart';
 import '../../../proxy/controllers/proxy_notifier.dart';
 
 class ProxyToggleButton extends StatelessWidget {
   const ProxyToggleButton({super.key});
+
+  Future<void> _startBackgroundServer(BuildContext context) async {
+    final service = FlutterBackgroundService();
+    final isRunning = await service.isRunning();
+    if (!isRunning) {
+      await service.startService();
+      service.invoke("start");
+    }
+    final proxy = context.read<ProxyNotifier>();
+    await proxy.startServer();
+  }
+
+  Future<void> _stopBackgroundServer(BuildContext context) async {
+    final service = FlutterBackgroundService();
+    final proxy = context.read<ProxyNotifier>();
+
+    proxy.stopServer();
+
+    final isRunning = await service.isRunning();
+    if (isRunning) {
+      service.invoke("stop");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +36,12 @@ class ProxyToggleButton extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        running ? proxy.stopServer() : proxy.startServer();
+        //running ? proxy.stopServer() : proxy.startServer();
+        if (running) {
+          _stopBackgroundServer(context);
+        } else {
+          _startBackgroundServer(context);
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 280),
@@ -23,21 +52,19 @@ class ProxyToggleButton extends StatelessWidget {
           color: running ? Colors.red.shade50 : Colors.green.shade50,
           boxShadow: running
               ? [
-            // Glow roja elegante
-            BoxShadow(
-              color: Colors.red.withOpacity(0.4),
-              blurRadius: 12,
-              spreadRadius: 2,
-            )
-          ]
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.4),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ]
               : [
-            // Glow verde suave
-            BoxShadow(
-              color: Colors.green.withOpacity(0.3),
-              blurRadius: 12,
-              spreadRadius: 2,
-            )
-          ],
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.3),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
         ),
 
         child: AnimatedSwitcher(
@@ -47,7 +74,9 @@ class ProxyToggleButton extends StatelessWidget {
             child: FadeTransition(opacity: anim, child: child),
           ),
           child: Icon(
-            running ? Icons.stop_circle_rounded : Icons.play_circle_fill_rounded,
+            running
+                ? Icons.stop_circle_rounded
+                : Icons.play_circle_fill_rounded,
             key: ValueKey(running),
             size: 30,
             color: running ? Colors.redAccent : Colors.green,

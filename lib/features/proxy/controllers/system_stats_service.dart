@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:proxyapp/features/proxy/domain/client_tracker.dart';
+import 'package:flutter/services.dart';
 
 class SystemStatsService {
   SystemStatsService();
@@ -66,16 +67,40 @@ class SystemStatsService {
     }
   }
 
+  Future<double> getCpuUsageSafe() async {
+    try {
+      final stat1 = await File('/proc/self/stat').readAsString();
+      await Future.delayed(Duration(milliseconds: 500));
+      final stat2 = await File('/proc/self/stat').readAsString();
+
+      final parts1 = stat1.split(' ');
+      final parts2 = stat2.split(' ');
+
+      final utime1 = int.parse(parts1[13]);
+      final stime1 = int.parse(parts1[14]);
+      final utime2 = int.parse(parts2[13]);
+      final stime2 = int.parse(parts2[14]);
+
+      final delta = (utime2 + stime2) - (utime1 + stime1);
+      return (delta / 100) * 100; // % estimado
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
   Future<SystemStats> readStats() async {
     final ramSystem = await getSystemRamUsedMb();
     final ramApp = await getAppMemoryMb();
     final countTask = openSockets();
+    final cpu = await getCpuUsageSafe();
+    final appCpu = 0.0;
 
     return SystemStats(
-      cpu: 0,
+      cpu: cpu,
       ram: ramSystem,
       appMemory: ramApp,
       countTask: countTask,
+      appCpu: appCpu,
     );
   }
 }
